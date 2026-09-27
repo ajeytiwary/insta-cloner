@@ -197,8 +197,8 @@ def app():
                     image_height = gr.Number(value=1024, precision=0, label="Height")
                     image_seed = gr.Number(value=42, precision=0, label="Seed")
                 with gr.Row():
-                    image_steps = gr.Number(value=25, precision=0, label="Steps")
-                    image_guidance = gr.Number(value=0.0, label="Guidance scale")
+                    image_steps = gr.Number(value=None, precision=0, label="Steps (blank = model default)")
+                    image_guidance = gr.Number(value=None, label="Guidance (blank = model default)")
                 low_vram = gr.Checkbox(
                     value=True,
                     label="Low VRAM mode",
