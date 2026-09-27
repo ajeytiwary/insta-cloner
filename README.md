@@ -1,109 +1,108 @@
 # insta-cloner
 
-Analyze the visual language of an Instagram profile and turn it into a reusable **inspiration profile** for original content.
+Local pipeline for turning an Instagram account's **visual language** into original content concepts and optional generated images.
 
-The tool intentionally separates:
+## Pipeline
 
-- **visual language**: palette, lighting, composition, recurring framing, scene types;
-- **pose/composition references**: extracted structural references;
-- **identity**: not copied by this project;
-- **generation**: optional downstream stage.
+Instagram URL -> Instaloader sample -> image/Reel keyframes -> visual statistics + optional CLIP -> style_profile.json -> local OpenAI-compatible LLM -> concepts.json -> optional Diffusers SDXL + IP-Adapter -> generated/
 
-It is designed for inspiration and visual-system analysis, not impersonation.
-
-## What works now
-
-1. Accept an Instagram profile URL or username.
-2. Download a bounded sample of recent posts with Instaloader.
-3. Extract video keyframes from downloaded Reels/videos.
-4. Analyze images with deterministic image statistics.
-5. Optionally use CLIP Interrogator for richer text descriptions.
-6. Aggregate the sample into `style_profile.json`.
-7. Produce `generation_brief.md` for your local LLM or image workflow.
-8. Optionally extract pose maps with a ControlNet-compatible annotator when the pose extra is installed.
+Identity copying is deliberately kept separate: the pipeline extracts broad aesthetics, composition tendencies and optional structural pose references, then asks the local model to change the exact person, location, wardrobe, props and composition.
 
 ## Install
 
-Use Python 3.10-3.13.
+Python 3.10-3.13:
 
-```bash
-git clone https://github.com/ajeytiwary/insta-cloner.git
-cd insta-cloner
+    git clone https://github.com/ajeytiwary/insta-cloner.git
+    cd insta-cloner
+    python -m venv .venv
+    source .venv/bin/activate
+    pip install -e ".[llm]"
 
-python -m venv .venv
-source .venv/bin/activate   # Linux/macOS
-# .venv\Scripts\activate  # Windows
+For everything:
 
-pip install -e .
-```
+    pip install -e ".[full]"
 
-For CLIP Interrogator:
+## llama.cpp
 
-```bash
-pip install -e ".[clip]"
-```
+Start any OpenAI-compatible llama.cpp server, for example on port 8080. The app defaults to:
 
-For optional pose extraction:
+    http://127.0.0.1:8080/v1
 
-```bash
-pip install -e ".[pose]"
-```
+The model name is passed through to the server, so set --llm-model to whatever your server exposes.
 
-## Usage
+## One-command workflow
 
-Public profile:
+Concepts only:
 
-```bash
-insta-cloner analyze https://www.instagram.com/PROFILE/ --max-posts 12
-```
+    insta-cloner clone https://www.instagram.com/PROFILE/ \
+      --max-posts 12 \
+      --clip \
+      --concepts 12 \
+      --llm-url http://127.0.0.1:8080/v1 \
+      --llm-model local-model
 
-If Instagram requires authentication, first create/reuse an Instaloader session:
+Concepts + images:
 
-```bash
-instaloader --login YOUR_INSTAGRAM_USERNAME
-insta-cloner analyze PROFILE --max-posts 12 --login YOUR_INSTAGRAM_USERNAME
-```
+    insta-cloner clone PROFILE \
+      --max-posts 12 \
+      --clip \
+      --concepts 12 \
+      --generate \
+      --image-model stabilityai/stable-diffusion-xl-base-1.0
 
-Enable CLIP interrogation:
+Add IP-Adapter broad visual conditioning:
 
-```bash
-insta-cloner analyze PROFILE --max-posts 12 --clip
-```
+    insta-cloner clone PROFILE \
+      --concepts 12 \
+      --generate \
+      --ip-adapter-repo h94/IP-Adapter
 
-Enable pose maps:
+For Instagram login-required profiles, first create an Instaloader session:
 
-```bash
-insta-cloner analyze PROFILE --max-posts 12 --pose
-```
+    instaloader --login YOUR_INSTAGRAM_USERNAME
 
-Output:
+Then add:
 
-```text
-output/PROFILE/
-├── media/
-├── frames/
-├── poses/
-├── sample_manifest.json
-├── per_image_analysis.json
-├── style_profile.json
-└── generation_brief.md
-```
+    --login YOUR_INSTAGRAM_USERNAME
 
-## Local-model workflow
+## RTX 3060 12 GB
 
-Feed `style_profile.json` and `generation_brief.md` to your local model and ask it to create original concepts that preserve high-level characteristics while changing subjects, scenes, garments, props, and exact compositions.
+The default SDXL generator uses fp16, model CPU offload, VAE slicing and VAE tiling. Default output is 768x1024 and 25 steps. This favors fitting into 12 GB rather than maximum speed.
 
-A downstream image pipeline can use:
+CLIP Interrogator and pose extraction are optional because they add models/VRAM pressure. If memory is tight, run analysis first and image generation as a separate invocation/process.
 
-- text prompt from the brief;
-- IP-Adapter for broad reference-image conditioning;
-- ControlNet/OpenPose/DWPose-compatible pose maps for structure;
-- your own character or identity model, if applicable.
+## Validation without models
 
-The project does **not** train on or reproduce another creator's identity.
+The LLM and image stages both have dry-run modes. They exercise orchestration without downloading model weights:
 
-## Notes
+    insta-cloner clone PROFILE \
+      --max-posts 2 \
+      --dry-run-llm \
+      --generate \
+      --dry-run-generation
 
-Instagram can rate-limit or require login. The project uses Instaloader rather than undocumented browser scraping. Keep sample sizes modest.
+## Output
 
-CLIP Interrogator downloads model weights on first use. Pose annotators may also download weights. The base analyzer works without either optional dependency.
+    output/PROFILE/
+    ├── media/
+    ├── frames/
+    ├── poses/
+    ├── sample_manifest.json
+    ├── per_image_analysis.json
+    ├── style_profile.json
+    ├── generation_brief.md
+    ├── concepts.json
+    └── generated/
+        ├── 001.png
+        └── ...
+
+## Components
+
+- Instaloader: Instagram sampling/download.
+- CLIP Interrogator: optional semantic visual descriptions.
+- OpenPose annotator: optional pose maps.
+- Any OpenAI-compatible local LLM: concept/art-direction generation.
+- Diffusers SDXL: default local image backend.
+- IP-Adapter: optional reference-image conditioning.
+
+The image backend is isolated in generator.py so Qwen-Image, FLUX or another Diffusers-compatible backend can be added without changing the downloader/analyzer/LLM stages.
