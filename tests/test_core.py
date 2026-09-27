@@ -61,3 +61,11 @@ def test_upstream_status_shape():
     assert "CLIP Interrogator" in names
     assert "ControlNet Aux" in names
     assert "Diffusers / IP-Adapter" in names
+
+
+def test_conditioning_dry_run_does_not_load_models(tmp_path: Path):
+    media=tmp_path/"media"; media.mkdir()
+    Image.new("RGB",(64,64),(1,2,3)).save(media/"ref.jpg")
+    made=generate_images([{"title":"x","prompt":"new scene"}],tmp_path/"out",media,model_name="sdxl",
+        ip_adapter=True,controlnet=True,dry_run=True,width=64,height=64)
+    assert made[0].exists()
