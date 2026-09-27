@@ -30,7 +30,11 @@ def test_generation_dry_run(tmp_path: Path):
     assert len(made)==1 and made[0].exists()
 
 def test_registry():
-    assert get_model("qwen-image-2.1")["kind"]=="comfyui"
+    qwen=get_model("qwen-image-2.1")
+    assert qwen["kind"]=="diffusers"
+    assert qwen["pipeline"]=="qwen_image_2_1"
+    assert qwen["native"] is True
+    assert qwen["workflow_path"].endswith("qwen_image_2_1_t2i_api.json")
     assert get_model("krea2-turbo")["model_id"]=="krea/Krea-2-Turbo"
     assert get_model("ideogram4-nf4")["kind"]=="diffusers"
     assert get_analyzer("qwen3-vl-4b")["recommended_12gb"] is True
