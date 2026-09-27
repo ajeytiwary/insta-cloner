@@ -14,7 +14,7 @@ IMAGE_SUFFIXES={".jpg",".jpeg",".png",".webp"}
 
 def run_pipeline(profile:str,output:Path=Path("output"),max_posts:int=12,login:str|None=None,use_clip:bool=False,use_pose:bool=False,video_frames:int=4,concept_count:int=12,
  llm_base_url:str="http://127.0.0.1:8080/v1",llm_model:str="local-model",llm_api_key:str="local",vlm:bool=False,vlm_url:str="http://127.0.0.1:8000/v1",vlm_model:str="Qwen/Qwen3-VL-4B-Instruct",
- generate:bool=False,image_model:str="sdxl",ip_adapter:bool=False,ip_scale:float=.45,ip_repo:str="h94/IP-Adapter",ip_weight:str="ip-adapter_sdxl.bin",
+ generate:bool=False,image_model:str="sdxl",image_backend:str="auto",image_width:int=768,image_height:int=1024,image_seed:int=42,image_steps:int|None=None,image_guidance:float|None=None,ip_adapter:bool=False,ip_scale:float=.45,ip_repo:str="h94/IP-Adapter",ip_weight:str="ip-adapter_sdxl.bin",
  controlnet:bool=False,control_scale:float=.8,control_model:str="thibaud/controlnet-openpose-sdxl-1.0",dry_run_llm:bool=False,dry_run_generation:bool=False)->dict[str,Any]:
     username=profile_name(profile); out=output/username; out.mkdir(parents=True,exist_ok=True)
     manifest=download_sample(username,out,max_posts=max_posts,login=login); frames=extract_keyframes(out/"media",out/"frames",per_video=video_frames)
@@ -26,7 +26,7 @@ def run_pipeline(profile:str,output:Path=Path("output"),max_posts:int=12,login:s
     need_pose=use_pose or controlnet
     poses=extract_poses([out/"media",out/"frames"],out/"poses") if need_pose else []
     concepts=generate_concepts(style,out/"concepts.json",count=concept_count,base_url=llm_base_url,model=llm_model,api_key=llm_api_key,dry_run=dry_run_llm)
-    images=generate_images(concepts,out/"generated",out/"media",model_name=image_model,dry_run=dry_run_generation,
+    images=generate_images(concepts,out/"generated",out/"media",model_name=image_model,width=image_width,height=image_height,seed=image_seed,steps=image_steps,guidance_scale=image_guidance,backend=image_backend,dry_run=dry_run_generation,
       ip_adapter=ip_adapter,ip_scale=ip_scale,ip_repo=ip_repo,ip_weight=ip_weight,controlnet=controlnet,control_scale=control_scale,control_model=control_model,pose_dir=out/"poses") if generate else []
     return {"username":username,"output":str(out),"posts":len(manifest),"frames":len(frames),"analyzed":len(records),"vlm_analyses":len(vlm_results),"poses":len(poses),
       "concepts":len(concepts),"generated":len(images),"image_model":image_model,"ip_adapter":ip_adapter,"controlnet":controlnet}
