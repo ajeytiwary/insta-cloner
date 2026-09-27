@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Insta Cloner GPU WebUI on EC2
+Parameters:
+  InstanceType:
+    Type: String
+    Default: g6.2xlarge
+  RepoUrl:
+    Type: String
+    Default: https://github.com/ajeytiwary/insta-cloner.git
+  RepoRef:
+    Type: String
+    Default: main
+  VolumeSize:
+    Type: Number
+    Default: 250
+    MinValue: 100
+  AllowedCidr:
+    Type: String
+    Default: 0.0.0.0/0
+  WebPort:
+    Type: Number
+    Default: 7860
+Resources:
+  WebSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Insta Cloner WebUI
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref WebPort
+          ToPort: !Ref WebPort
+          CidrIp: !Ref AllowedCidr
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: [ec2.amazonaws.com]}
+            Action: ['sts:AssumeRole']
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: [!Ref InstanceRole]
+  GPUInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref InstanceProfile
+      SecurityGroupIds: [!GetAtt WebSecurityGroup.GroupId]
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: !Ref VolumeSize
+            VolumeType: gp3
+            DeleteOnTermination: false
+      ImageId: '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}'
+      Tags:
+        - {Key: Name, Value: insta-cloner-gpu}
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -euxo pipefail
+          dnf install -y docker git
+          systemctl enable --now docker
+          curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo -o /etc/yum.repos.d/nvidia-container-toolkit.repo
+          dnf install -y nvidia-container-toolkit
+          nvidia-ctk runtime configure --runtime=docker
+          systemctl restart docker
+          mkdir -p /opt/insta-cloner /data
+          git clone --branch '${RepoRef}' '${RepoUrl}' /opt/insta-cloner
+          cd /opt/insta-cloner
+          docker build -t insta-cloner .
+          docker run -d --restart unless-stopped --gpus all --name insta-cloner -p ${WebPort}:7860 -v /data:/data insta-cloner
+Outputs:
+  WebUI:
+    Value: !Sub 'http://${GPUInstance.PublicDnsName}:${WebPort}'
+  InstanceId:
+    Value: !Ref GPUInstance
