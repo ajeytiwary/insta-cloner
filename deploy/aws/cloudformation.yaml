@@ -20,6 +20,13 @@ Parameters:
   WebPort:
     Type: Number
     Default: 7860
+  WebUser:
+    Type: String
+    Default: admin
+  WebPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 12
 Resources:
   WebSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -74,7 +81,7 @@ Resources:
           git clone --branch '${RepoRef}' '${RepoUrl}' /opt/insta-cloner
           cd /opt/insta-cloner
           docker build -t insta-cloner .
-          docker run -d --restart unless-stopped --gpus all --name insta-cloner -p ${WebPort}:7860 -v /data:/data insta-cloner
+          docker run -d --restart unless-stopped --gpus all --name insta-cloner -e INSTA_CLONER_USER="${WebUser}" -e INSTA_CLONER_PASSWORD="${WebPassword}" -p ${WebPort}:7860 -v /data:/data insta-cloner
 Outputs:
   WebUI:
     Value: !Sub 'http://${GPUInstance.PublicDnsName}:${WebPort}'
