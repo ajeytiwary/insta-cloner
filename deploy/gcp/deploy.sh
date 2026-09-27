@@ -27,6 +27,7 @@ mkdir -p /opt/insta-cloner /data
 git clone --branch "$REPO_REF" "$REPO_URL" /opt/insta-cloner
 cd /opt/insta-cloner
 docker build -t insta-cloner .
+docker run --rm --gpus all -v /data:/data insta-cloner insta-cloner gpu-smoke --output /data/smoke
 docker run -d --restart unless-stopped --gpus all --name insta-cloner \
   -e INSTA_CLONER_USER="$WEB_USER" \
   -e INSTA_CLONER_PASSWORD="$WEB_PASSWORD" \
