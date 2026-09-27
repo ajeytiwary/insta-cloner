@@ -92,3 +92,18 @@ def test_comfy_workflow_mapping():
     assert out["3"]["inputs"]["seed"]==42
     assert out["3"]["inputs"]["steps"]==25
     assert workflow["1"]["inputs"]["text"]=="old"
+
+
+def test_runtime_status_shape():
+    from insta_cloner.runtime import runtime_status
+    status=runtime_status()
+    assert "cuda" in status
+    assert "vram_gb" in status
+    assert "diffusers" in status
+
+
+def test_model_readiness_without_gpu_is_explanatory():
+    from insta_cloner.runtime import model_readiness
+    result=model_readiness({"kind":"diffusers","local":True,"recommended_12gb":False})
+    assert "runtime" in result
+    assert isinstance(result["warnings"],list)
