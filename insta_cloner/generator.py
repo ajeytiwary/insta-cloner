@@ -60,28 +60,42 @@ def _conditioned(concepts,spec,output_dir,media_dir,width,height,seed,ip_adapter
         im=pipe(**call).images[0]; p=output_dir/f"{i+1:03d}.png"; im.save(p); made.append(p)
     return made
 
-def _local(concepts,spec,output_dir,width,height,seed):
+def _local(concepts,spec,output_dir,width,height,seed,steps=None,guidance_scale=None):
+
     import torch
     from diffusers import DiffusionPipeline
     if not torch.cuda.is_available(): raise RuntimeError("CUDA GPU not detected.")
-    pipe=DiffusionPipeline.from_pretrained(spec["model_id"],torch_dtype=torch.bfloat16); pipe.enable_model_cpu_offload()
+    pipeline_name=spec.get("pipeline")
+    if pipeline_name=="qwen_image_2_1":
+        from diffusers import QwenImage21Pipeline
+        pipe=QwenImage21Pipeline.from_pretrained(spec["model_id"],torch_dtype=torch.bfloat16)
+    elif pipeline_name=="krea2":
+        from diffusers import Krea2Pipeline
+        pipe=Krea2Pipeline.from_pretrained(spec["model_id"],torch_dtype=torch.bfloat16)
+    else:
+        pipe=DiffusionPipeline.from_pretrained(spec["model_id"],torch_dtype=torch.bfloat16)
+    pipe.enable_model_cpu_offload()
+    if hasattr(pipe,"enable_vae_slicing"): pipe.enable_vae_slicing()
+    if hasattr(pipe,"enable_vae_tiling"): pipe.enable_vae_tiling()
     made=[]
     for i,c in enumerate(concepts):
         call={"prompt":c.get("prompt",""),"width":width,"height":height,"generator":torch.Generator(device="cpu").manual_seed(seed+i)}
-        if "steps" in spec: call["num_inference_steps"]=spec["steps"]
-        if "guidance_scale" in spec: call["guidance_scale"]=spec["guidance_scale"]
+        chosen_steps=steps if steps is not None else spec.get("steps")
+        chosen_guidance=guidance_scale if guidance_scale is not None else spec.get("guidance_scale")
+        if chosen_steps is not None: call["num_inference_steps"]=int(chosen_steps)
+        if chosen_guidance is not None: call["guidance_scale"]=float(chosen_guidance)
         im=pipe(**call).images[0]; p=output_dir/f"{i+1:03d}.png"; im.save(p); made.append(p)
     return made
 
 def generate_images(concepts:list[dict[str,Any]],output_dir:Path,media_dir:Path,model_name:str="sdxl",width:int=768,height:int=1024,seed:int=42,dry_run:bool=False,
                     ip_adapter:bool=False,ip_scale:float=.45,ip_repo:str="h94/IP-Adapter",ip_weight:str="ip-adapter_sdxl.bin",
-                    controlnet:bool=False,control_scale:float=.8,control_model:str="thibaud/controlnet-openpose-sdxl-1.0",pose_dir:Path|None=None,**_:Any)->list[Path]:
+                    controlnet:bool=False,control_scale:float=.8,control_model:str="thibaud/controlnet-openpose-sdxl-1.0",pose_dir:Path|None=None,steps:int|None=None,guidance_scale:float|None=None,backend:str="auto",**_:Any)->list[Path]:
     output_dir.mkdir(parents=True,exist_ok=True); spec=resolve_image_model(model_name)
     if dry_run:
         made=[]
         for i,c in enumerate(concepts): p=output_dir/f"{i+1:03d}.png"; _dry_image(p,c,width,height); made.append(p)
         return made
-    if spec["kind"]=="comfyui":
+    if backend=="comfyui" or spec["kind"]=="comfyui":
         if ip_adapter or controlnet:
             raise RuntimeError("SDXL IP-Adapter/ControlNet controls cannot be attached to this ComfyUI workflow.")
         from .comfyui import generate_comfy
@@ -106,4 +120,4 @@ def generate_images(concepts:list[dict[str,Any]],output_dir:Path,media_dir:Path,
         return made
     if ip_adapter or controlnet:
         return _conditioned(concepts,spec,output_dir,media_dir,width,height,seed,ip_adapter,ip_scale,ip_repo,ip_weight,controlnet,control_scale,control_model,pose_dir)
-    return _local(concepts,spec,output_dir,width,height,seed)
+    return _local(concepts,spec,output_dir,width,height,seed,steps,guidance_scale)
