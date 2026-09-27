@@ -78,12 +78,17 @@ def _local(concepts,spec,output_dir,width,height,seed,steps=None,guidance_scale=
                 components_to_quantize=["transformer","text_encoder"],
             )
         pipe=QwenImage21Pipeline.from_pretrained(spec["model_id"],**load_kwargs)
+        if low_vram:
+            pipe.to("cuda")
+            if hasattr(pipe,"enable_vae_slicing"): pipe.enable_vae_slicing()
+            if hasattr(pipe,"enable_vae_tiling"): pipe.enable_vae_tiling()
     elif pipeline_name=="krea2":
         from diffusers import Krea2Pipeline
         pipe=Krea2Pipeline.from_pretrained(spec["model_id"],torch_dtype=torch.bfloat16)
     else:
         pipe=DiffusionPipeline.from_pretrained(spec["model_id"],torch_dtype=torch.bfloat16)
-    pipe=apply_memory_optimizations(pipe,low_vram=low_vram)
+    if not (pipeline_name=="qwen_image_2_1" and low_vram):
+        pipe=apply_memory_optimizations(pipe,low_vram=low_vram)
     made=[]
     for i,c in enumerate(concepts):
         call={"prompt":c.get("prompt",""),"width":width,"height":height,"generator":torch.Generator(device="cpu").manual_seed(seed+i)}
