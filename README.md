@@ -106,3 +106,28 @@ The LLM and image stages both have dry-run modes. They exercise orchestration wi
 - IP-Adapter: optional reference-image conditioning.
 
 The image backend is isolated in generator.py so Qwen-Image, FLUX or another Diffusers-compatible backend can be added without changing the downloader/analyzer/LLM stages.
+
+
+## One-command GPU cloud deployment
+
+The WebUI can run without ComfyUI in the included NVIDIA container. Model downloads are cached under `/data/huggingface`.
+
+### AWS
+
+Default target: EC2 G6. Override `INSTANCE_TYPE` to choose another GPU instance family.
+
+```bash
+AWS_REGION=eu-central-1 INSTANCE_TYPE=g6.2xlarge ALLOWED_CIDR="$(curl -s https://checkip.amazonaws.com)/32" ./deploy.sh aws
+```
+
+The CloudFormation stack creates the GPU VM, persistent root storage, SSM role and WebUI security group. For anything beyond temporary testing, restrict `ALLOWED_CIDR` rather than exposing port 7860 globally.
+
+### GCP
+
+Default target: `g2-standard-8` with one NVIDIA L4-class GPU. GPU quota and the selected machine type must be available in the chosen zone.
+
+```bash
+PROJECT_ID=my-project ZONE=europe-west4-a MACHINE_TYPE=g2-standard-8 ./deploy.sh gcp
+```
+
+Both deployments accept larger GPU machine types without application changes. Large checkpoints should use a sufficiently large disk; the default is 250 GB.
