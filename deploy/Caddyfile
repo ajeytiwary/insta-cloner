@@ -1,12 +1,3 @@
-{
-  auto_https disable_redirects
-}
-
-http:// {
-  reverse_proxy app:7860
-}
-
-https://${DOMAIN:localhost} {
-  tls internal
+${DOMAIN:localhost} {
   reverse_proxy app:7860
 }
