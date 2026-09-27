@@ -3,11 +3,11 @@ from pathlib import Path
 import typer
 from rich.console import Console
 from .models import MODELS, ANALYZERS
-from .pipeline import run_pipeline
+from .pipeline import run_pipeline\nfrom .ui import launch as launch_ui
 
 app=typer.Typer(no_args_is_help=True); console=Console()
 
-@app.command("models")
+@app.command("ui")\ndef ui(host: str="127.0.0.1", port: int=7860, share: bool=False) -> None:\n    launch_ui(host,port,share)\n\n@app.command("models")
 def models_cmd() -> None:
     console.print("[bold]Image models[/bold]")
     for n,s in MODELS.items(): console.print(f"{n}: {s['kind']} | {s.get('model_id',s.get('endpoint'))}")
