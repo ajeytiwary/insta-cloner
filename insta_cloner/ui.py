@@ -19,14 +19,14 @@ def _upstream_table():
 
 def run(profile,max_posts,login,clip,pose,use_vlm,vlm_url,vlm_model,
         llm_url,llm_model,llm_key,concepts,generate,image_model,output,
-        dry_llm,dry_image,krea_key,ideogram_key):
+        dry_llm,dry_image,krea_key,ideogram_key,ip_adapter,ip_scale,ip_repo,ip_weight,controlnet,control_scale,control_model):
     if krea_key: os.environ["KREA_API_KEY"]=krea_key
     if ideogram_key: os.environ["IDEOGRAM_API_KEY"]=ideogram_key
     result=run_pipeline(profile=profile,output=Path(output or "output"),max_posts=int(max_posts),
         login=login or None,use_clip=clip,use_pose=pose,concept_count=int(concepts),
         vlm=use_vlm,vlm_url=vlm_url,vlm_model=vlm_model,
         llm_base_url=llm_url,llm_model=llm_model,llm_api_key=llm_key or "local",
-        generate=generate,image_model=image_model,dry_run_llm=dry_llm,dry_run_generation=dry_image)
+        generate=generate,image_model=image_model,dry_run_llm=dry_llm,dry_run_generation=dry_image,\n        ip_adapter=ip_adapter,ip_scale=float(ip_scale),ip_repo=ip_repo,ip_weight=ip_weight,\n        controlnet=controlnet,control_scale=float(control_scale),control_model=control_model)
     out=Path(result["output"])
     style=(out/"style_profile.json").read_text(encoding="utf-8") if (out/"style_profile.json").exists() else "{}"
     concepts_json=(out/"concepts.json").read_text(encoding="utf-8") if (out/"concepts.json").exists() else "[]"
@@ -63,7 +63,15 @@ def app():
             with gr.Accordion("Image generation",open=True):
                 generate=gr.Checkbox(label="Generate images")
                 image_model=gr.Dropdown(choices=images,value="sdxl",allow_custom_value=True,label="Image model preset")
-                gr.Markdown("IP-Adapter and ControlNet are provided through upstream Diffusers/controlnet-aux adapters; model-specific transfer controls are being kept separate from generator model selection.")
+                with gr.Accordion("Style transfer — IP-Adapter",open=True):
+                    ip_adapter=gr.Checkbox(label="Enable IP-Adapter")
+                    ip_scale=gr.Slider(0,1,0.45,step=0.05,label="Style/reference strength")
+                    ip_repo=gr.Textbox(value="h94/IP-Adapter",label="IP-Adapter repository")
+                    ip_weight=gr.Textbox(value="ip-adapter_sdxl.bin",label="IP-Adapter weight")
+                with gr.Accordion("Pose / structure — ControlNet",open=True):
+                    controlnet=gr.Checkbox(label="Enable OpenPose ControlNet")
+                    control_scale=gr.Slider(0,1.5,0.8,step=0.05,label="ControlNet conditioning strength")
+                    control_model=gr.Textbox(value="thibaud/controlnet-openpose-sdxl-1.0",label="ControlNet model")
                 with gr.Row():
                     krea_key=gr.Textbox(type="password",label="Krea API key (optional)")
                     ideogram_key=gr.Textbox(type="password",label="Ideogram API key (optional)")
@@ -76,7 +84,7 @@ def app():
             with gr.Tab("Concepts"): concept_out=gr.Code(language="json")
             gallery=gr.Gallery(label="Generated images",columns=4)
             go.click(run,[profile,max_posts,login,clip,pose,use_vlm,vlm_url,vlm_model,llm_url,llm_model,llm_key,
-                          concepts,generate,image_model,output,dry_llm,dry_image,krea_key,ideogram_key],
+                          concepts,generate,image_model,output,dry_llm,dry_image,krea_key,ideogram_key,ip_adapter,ip_scale,ip_repo,ip_weight,controlnet,control_scale,control_model],
                      [status,style,concept_out,gallery])
         with gr.Tab("Model configuration"):
             gr.Markdown("Edit presets or add your own providers/model IDs. Secrets are not stored here.")
