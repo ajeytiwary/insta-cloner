@@ -69,3 +69,26 @@ def test_conditioning_dry_run_does_not_load_models(tmp_path: Path):
     made=generate_images([{"title":"x","prompt":"new scene"}],tmp_path/"out",media,model_name="sdxl",
         ip_adapter=True,controlnet=True,dry_run=True,width=64,height=64)
     assert made[0].exists()
+
+
+def test_comfy_workflow_mapping():
+    from insta_cloner.comfyui import configure_workflow
+    workflow={
+        "1":{"class_type":"Text","inputs":{"text":"old"}},
+        "2":{"class_type":"Latent","inputs":{"width":1,"height":1}},
+        "3":{"class_type":"Sampler","inputs":{"seed":0,"steps":1}},
+    }
+    mapping={
+        "prompt":{"node":"1","input":"text"},
+        "width":{"node":"2","input":"width"},
+        "height":{"node":"2","input":"height"},
+        "seed":{"node":"3","input":"seed"},
+        "steps":{"node":"3","input":"steps"},
+    }
+    out=configure_workflow(workflow,"hello",768,1024,42,25,mapping)
+    assert out["1"]["inputs"]["text"]=="hello"
+    assert out["2"]["inputs"]["width"]==768
+    assert out["2"]["inputs"]["height"]==1024
+    assert out["3"]["inputs"]["seed"]==42
+    assert out["3"]["inputs"]["steps"]==25
+    assert workflow["1"]["inputs"]["text"]=="old"
