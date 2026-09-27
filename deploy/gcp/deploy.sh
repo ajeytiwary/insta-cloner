@@ -8,7 +8,9 @@ MACHINE_TYPE="${MACHINE_TYPE:-g2-standard-8}"
 DISK_SIZE="${DISK_SIZE:-250GB}"
 REPO_URL="${REPO_URL:-https://github.com/ajeytiwary/insta-cloner.git}"
 REPO_REF="${REPO_REF:-main}"
-WEB_PORT="${WEB_PORT:-7860}"\nWEB_USER="${WEB_USER:-admin}"\nWEB_PASSWORD="${WEB_PASSWORD:?Set WEB_PASSWORD (12+ characters)}"
+WEB_PORT="${WEB_PORT:-7860}"
+WEB_USER="${WEB_USER:-admin}"
+WEB_PASSWORD="${WEB_PASSWORD:?Set WEB_PASSWORD (12+ characters)}"
 
 gcloud config set project "$PROJECT_ID"
 gcloud services enable compute.googleapis.com
@@ -23,12 +25,18 @@ mkdir -p /opt/insta-cloner /data
 git clone --branch "$REPO_REF" "$REPO_URL" /opt/insta-cloner
 cd /opt/insta-cloner
 docker build -t insta-cloner .
-docker run -d --restart unless-stopped --gpus all --name insta-cloner -e INSTA_CLONER_USER="$WEB_USER" -e INSTA_CLONER_PASSWORD="$WEB_PASSWORD" -p "$WEB_PORT":7860 -v /data:/data insta-cloner
+docker run -d --restart unless-stopped --gpus all --name insta-cloner \
+  -e INSTA_CLONER_USER="$WEB_USER" \
+  -e INSTA_CLONER_PASSWORD="$WEB_PASSWORD" \
+  -p "$WEB_PORT":7860 \
+  -v /data:/data \
+  insta-cloner
 EOF
 
 gcloud compute firewall-rules describe insta-cloner-web >/dev/null 2>&1 || \
 gcloud compute firewall-rules create insta-cloner-web \
-  --allow="tcp:$WEB_PORT" --target-tags=insta-cloner
+  --allow="tcp:$WEB_PORT" \
+  --target-tags=insta-cloner
 
 gcloud compute instances create "$INSTANCE_NAME" \
   --zone="$ZONE" \
@@ -41,5 +49,7 @@ gcloud compute instances create "$INSTANCE_NAME" \
   --tags=insta-cloner \
   --metadata-from-file=startup-script=/tmp/insta-cloner-startup.sh
 
-IP=$(gcloud compute instances describe "$INSTANCE_NAME" --zone="$ZONE" --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
+IP=$(gcloud compute instances describe "$INSTANCE_NAME" \
+  --zone="$ZONE" \
+  --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
 echo "WebUI: http://$IP:$WEB_PORT"
