@@ -1,75 +1,123 @@
 from __future__ import annotations
 
+import base64
+import os
+import time
 from pathlib import Path
 from typing import Any
 
 from PIL import Image, ImageDraw
 
-
-def _reference_images(media_dir: Path, limit: int = 4) -> list[Image.Image]:
-    suffixes = {".jpg", ".jpeg", ".png", ".webp"}
-    paths = [p for p in sorted(media_dir.rglob("*")) if p.suffix.lower() in suffixes][:limit]
-    return [Image.open(p).convert("RGB") for p in paths]
+from .models import get_model
 
 
 def _dry_image(path: Path, concept: dict[str, Any], width: int, height: int) -> None:
     img = Image.new("RGB", (width, height), (32, 32, 32))
     draw = ImageDraw.Draw(img)
-    text = "DRY RUN\\n" + str(concept.get("title", "concept")) + "\\n\\n" + str(concept.get("prompt", ""))[:220]
-    draw.multiline_text((40, 40), text, fill=(235, 235, 235), spacing=8)
+    draw.multiline_text((40, 40), "DRY RUN\n" + str(concept.get("title", "")) + "\n\n" + str(concept.get("prompt", ""))[:220], fill=(235,235,235))
     img.save(path)
 
 
-def generate_images(concepts: list[dict[str, Any]], output_dir: Path, media_dir: Path,
-                    model_id: str = "stabilityai/stable-diffusion-xl-base-1.0",
-                    ip_adapter_repo: str | None = None,
-                    ip_adapter_weight: str = "ip-adapter_sdxl.bin",
-                    ip_scale: float = 0.45, steps: int = 25,
-                    width: int = 768, height: int = 1024,
-                    seed: int = 42, dry_run: bool = False) -> list[Path]:
-    output_dir.mkdir(parents=True, exist_ok=True)
-    if dry_run:
-        made = []
-        for i, concept in enumerate(concepts):
-            path = output_dir / f"{i + 1:03d}.png"
-            _dry_image(path, concept, width, height)
-            made.append(path)
-        return made
+def _download(url: str, path: Path) -> None:
+    import requests
+    r = requests.get(url, timeout=120)
+    r.raise_for_status()
+    path.write_bytes(r.content)
 
+
+def _api_generate(concept: dict[str, Any], spec: dict, path: Path, width: int, height: int) -> None:
+    import requests
+    prompt = concept.get("prompt", "")
+    if spec["kind"] == "krea_api":
+        key = os.environ.get("KREA_API_KEY")
+        if not key:
+            raise RuntimeError("Set KREA_API_KEY.")
+        ratio = "4:5" if height > width else "1:1"
+        r = requests.post(spec["endpoint"], headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                          json={"prompt": prompt, "aspect_ratio": ratio, "resolution": "1K", "creativity": "medium"}, timeout=120)
+        r.raise_for_status()
+        data = r.json()
+        job_id = data.get("job_id") or data.get("id")
+        if not job_id:
+            raise RuntimeError(f"Krea API did not return a job id: {data}")
+        for _ in range(120):
+            j = requests.get(f"https://api.krea.ai/jobs/{job_id}", headers={"Authorization": f"Bearer {key}"}, timeout=30)
+            j.raise_for_status()
+            payload = j.json()
+            url = payload.get("result", {}).get("url") or payload.get("url") or payload.get("image_url")
+            if url:
+                _download(url, path); return
+            if str(payload.get("status", "")).lower() in {"failed", "error"}:
+                raise RuntimeError(str(payload))
+            time.sleep(2)
+        raise TimeoutError("Krea generation timed out.")
+
+    if spec["kind"] == "ideogram_api":
+        key = os.environ.get("IDEOGRAM_API_KEY")
+        if not key:
+            raise RuntimeError("Set IDEOGRAM_API_KEY.")
+        r = requests.post(spec["endpoint"], headers={"Api-Key": key, "Content-Type": "application/json"},
+                          json={"prompt": prompt, "aspect_ratio": "4x5" if height > width else "1x1"}, timeout=180)
+        r.raise_for_status()
+        data = r.json()
+        items = data.get("data") or []
+        url = items[0].get("url") if items else data.get("url")
+        if not url:
+            raise RuntimeError(f"Ideogram API did not return an image URL: {data}")
+        _download(url, path); return
+
+    raise ValueError(f"Unsupported API backend: {spec['kind']}")
+
+
+def _local_diffusers(concepts: list[dict[str, Any]], spec: dict, output_dir: Path,
+                     width: int, height: int, seed: int) -> list[Path]:
     try:
         import torch
-        from diffusers import AutoPipelineForText2Image
+        from diffusers import DiffusionPipeline
     except ImportError as exc:
         raise RuntimeError('Install generation dependencies: pip install -e ".[generate]"') from exc
-
     if not torch.cuda.is_available():
-        raise RuntimeError("CUDA GPU not detected. Use --dry-run-generation or run on a CUDA machine.")
+        raise RuntimeError("CUDA GPU not detected.")
 
-    pipe = AutoPipelineForText2Image.from_pretrained(
-        model_id, torch_dtype=torch.float16, variant="fp16", use_safetensors=True
-    )
-    pipe.enable_model_cpu_offload()
-    pipe.enable_vae_slicing()
-    pipe.enable_vae_tiling()
-
-    refs = _reference_images(media_dir)
-    use_ip = bool(ip_adapter_repo and refs)
-    if use_ip:
-        pipe.load_ip_adapter(ip_adapter_repo, subfolder="sdxl_models", weight_name=ip_adapter_weight)
-        pipe.set_ip_adapter_scale(ip_scale)
+    kwargs = {"torch_dtype": torch.bfloat16}
+    pipe = DiffusionPipeline.from_pretrained(spec["model_id"], **kwargs)
+    try:
+        pipe.enable_model_cpu_offload()
+    except Exception:
+        pipe.to("cuda")
+    for method in ("enable_vae_slicing", "enable_vae_tiling"):
+        if hasattr(pipe, method):
+            getattr(pipe, method)()
 
     made = []
     for i, concept in enumerate(concepts):
-        generator = torch.Generator(device="cpu").manual_seed(seed + i)
-        kwargs: dict[str, Any] = {
-            "prompt": concept.get("prompt", ""),
-            "negative_prompt": concept.get("negative_prompt", "watermark, logo, text"),
-            "num_inference_steps": steps, "width": width, "height": height, "generator": generator,
-        }
-        if use_ip:
-            kwargs["ip_adapter_image"] = refs[i % len(refs)]
-        image = pipe(**kwargs).images[0]
-        path = output_dir / f"{i + 1:03d}.png"
-        image.save(path)
-        made.append(path)
+        call: dict[str, Any] = {"prompt": concept.get("prompt", ""), "width": width, "height": height,
+                                "generator": torch.Generator(device="cpu").manual_seed(seed + i)}
+        if "steps" in spec:
+            call["num_inference_steps"] = spec["steps"]
+        if "guidance_scale" in spec:
+            call["guidance_scale"] = spec["guidance_scale"]
+        image = pipe(**call).images[0]
+        path = output_dir / f"{i+1:03d}.png"
+        image.save(path); made.append(path)
     return made
+
+
+def generate_images(concepts: list[dict[str, Any]], output_dir: Path, media_dir: Path,
+                    model_name: str = "sdxl", width: int = 768, height: int = 1024,
+                    seed: int = 42, dry_run: bool = False, **_: Any) -> list[Path]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    spec = get_model(model_name)
+    if dry_run:
+        made=[]
+        for i,c in enumerate(concepts):
+            p=output_dir/f"{i+1:03d}.png"; _dry_image(p,c,width,height); made.append(p)
+        return made
+    if spec["kind"] == "comfyui":
+        raise RuntimeError(f"{model_name} uses ComfyUI single-file weights. Use the supplied ComfyUI workflow/backend; direct Diffusers loading is intentionally disabled.")
+    if spec["kind"] in {"krea_api", "ideogram_api"}:
+        made=[]
+        for i,c in enumerate(concepts):
+            p=output_dir/f"{i+1:03d}.png"; _api_generate(c,spec,p,width,height); made.append(p)
+        return made
+    return _local_diffusers(concepts,spec,output_dir,width,height,seed)
