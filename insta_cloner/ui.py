@@ -38,6 +38,12 @@ def run(
     concepts,
     generate,
     image_model,
+    image_backend,
+    image_width,
+    image_height,
+    image_seed,
+    image_steps,
+    image_guidance,
     output,
     dry_llm,
     dry_image,
@@ -72,6 +78,12 @@ def run(
         llm_api_key=llm_key or "local",
         generate=generate,
         image_model=image_model,
+        image_backend=image_backend,
+        image_width=int(image_width),
+        image_height=int(image_height),
+        image_seed=int(image_seed),
+        image_steps=int(image_steps) if image_steps else None,
+        image_guidance=float(image_guidance) if image_guidance is not None else None,
         dry_run_llm=dry_llm,
         dry_run_generation=dry_image,
         ip_adapter=ip_adapter,
@@ -163,6 +175,19 @@ def app():
                     allow_custom_value=True,
                     label="Image model preset",
                 )
+                image_backend = gr.Radio(
+                    choices=["auto", "native", "comfyui"],
+                    value="native",
+                    label="Generation backend",
+                    info="Native runs directly in this WebUI; ComfyUI is optional.",
+                )
+                with gr.Row():
+                    image_width = gr.Number(value=768, precision=0, label="Width")
+                    image_height = gr.Number(value=1024, precision=0, label="Height")
+                    image_seed = gr.Number(value=42, precision=0, label="Seed")
+                with gr.Row():
+                    image_steps = gr.Number(value=25, precision=0, label="Steps")
+                    image_guidance = gr.Number(value=0.0, label="Guidance scale")
 
                 with gr.Accordion("Style transfer - IP-Adapter", open=True):
                     ip_adapter = gr.Checkbox(label="Enable IP-Adapter")
@@ -225,6 +250,12 @@ def app():
                 concepts,
                 generate,
                 image_model,
+                image_backend,
+                image_width,
+                image_height,
+                image_seed,
+                image_steps,
+                image_guidance,
                 output,
                 dry_llm,
                 dry_image,
