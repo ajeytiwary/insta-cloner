@@ -38,3 +38,16 @@ def test_registry():
 def test_vlm_merge():
     result=merge_vlm_style({"palette":[]},[{"analysis":{"art_style":"editorial"}}])
     assert result["vlm_aesthetic_analysis"][0]["art_style"]=="editorial"
+
+
+def test_custom_registry(tmp_path: Path):
+    from insta_cloner.config import load_registry, save_registry, resolve_image_model
+    path=tmp_path/"models.json"
+    save_registry({"image_models":{"custom":{"kind":"diffusers","model_id":"org/model"}},"analyzers":{}},path)
+    data=load_registry(path)
+    assert data["image_models"]["custom"]["model_id"]=="org/model"
+    assert resolve_image_model("ignored","org/other")["model_id"]=="org/other"
+
+def test_ui_import():
+    from insta_cloner.ui import app
+    assert callable(app)
