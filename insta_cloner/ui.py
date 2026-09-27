@@ -9,6 +9,7 @@ import gradio as gr
 from .config import load_registry, save_registry
 from .pipeline import run_pipeline
 from .upstream import upstream_status
+from .runtime import model_readiness, runtime_status
 
 
 def _choices():
@@ -44,6 +45,7 @@ def run(
     image_seed,
     image_steps,
     image_guidance,
+    low_vram,
     output,
     dry_llm,
     dry_image,
@@ -84,6 +86,7 @@ def run(
         image_seed=int(image_seed),
         image_steps=int(image_steps) if image_steps else None,
         image_guidance=float(image_guidance) if image_guidance is not None else None,
+        low_vram=low_vram,
         dry_run_llm=dry_llm,
         dry_run_generation=dry_image,
         ip_adapter=ip_adapter,
@@ -110,6 +113,14 @@ def run(
         else []
     )
     return json.dumps(result, indent=2), style, concepts_json, gallery
+
+
+def readiness(model_name):
+    registry = load_registry()["image_models"]
+    spec = registry.get(model_name)
+    if not spec:
+        return {"ready": False, "warnings": ["Unknown model preset."], "runtime": runtime_status()}
+    return model_readiness(spec)
 
 
 def save_models(raw):
@@ -188,6 +199,14 @@ def app():
                 with gr.Row():
                     image_steps = gr.Number(value=25, precision=0, label="Steps")
                     image_guidance = gr.Number(value=0.0, label="Guidance scale")
+                low_vram = gr.Checkbox(
+                    value=True,
+                    label="Low VRAM mode",
+                    info="CPU offload + VAE slicing/tiling for constrained GPUs.",
+                )
+                check_runtime = gr.Button("Check native runtime")
+                runtime_box = gr.JSON(label="Runtime / model readiness")
+                check_runtime.click(readiness, [image_model], [runtime_box])
 
                 with gr.Accordion("Style transfer - IP-Adapter", open=True):
                     ip_adapter = gr.Checkbox(label="Enable IP-Adapter")
@@ -256,6 +275,7 @@ def app():
                 image_seed,
                 image_steps,
                 image_guidance,
+                low_vram,
                 output,
                 dry_llm,
                 dry_image,
