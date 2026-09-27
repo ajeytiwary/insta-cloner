@@ -64,14 +64,15 @@ Resources:
             VolumeSize: !Ref VolumeSize
             VolumeType: gp3
             DeleteOnTermination: false
-      ImageId: '{{resolve:ssm:/aws/service/deeplearning/ami/x86_64/base-oss-nvidia-driver-gpu-amazon-linux-2023/latest/ami-id}}'
+      ImageId: '{{resolve:ssm:/aws/service/deeplearning/ami/x86_64/base-oss-nvidia-driver-gpu-ubuntu-24.04/latest/ami-id}}'
       Tags:
         - {Key: Name, Value: insta-cloner-gpu}
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
           set -euxo pipefail
-          dnf install -y docker git
+          apt-get update
+          apt-get install -y docker.io git curl
           systemctl enable --now docker
           nvidia-smi
           nvidia-ctk runtime configure --runtime=docker
