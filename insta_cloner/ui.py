@@ -5,10 +5,17 @@ from pathlib import Path
 import gradio as gr
 from .config import load_registry, save_registry
 from .pipeline import run_pipeline
+from .upstream import upstream_status
 
 def _choices():
     r=load_registry()
     return list(r["image_models"]),list(r["analyzers"])
+
+def _upstream_table():
+    rows=[]
+    for s in upstream_status():
+        rows.append([s.name, "yes" if s.installed else "no", s.version or ""])
+    return rows
 
 def run(profile,max_posts,login,clip,pose,use_vlm,vlm_url,vlm_model,
         llm_url,llm_model,llm_key,concepts,generate,image_model,output,
@@ -33,7 +40,7 @@ def save_models(raw):
 def app():
     images,analyzers=_choices(); registry=json.dumps(load_registry(),indent=2)
     with gr.Blocks(title="Insta Cloner") as demo:
-        gr.Markdown("# Insta Cloner\nAnalyze a profile's visual language and generate original inspired concepts/content.")
+        gr.Markdown("# Insta Cloner\nBuilt on upstream Instaloader, CLIP Interrogator, ControlNet tooling and Diffusers IP-Adapter support.")
         with gr.Tab("Create"):
             profile=gr.Textbox(label="Instagram profile URL / username")
             with gr.Row():
@@ -43,8 +50,8 @@ def app():
             login=gr.Textbox(label="Instaloader session username (optional)")
             with gr.Accordion("Aesthetic analysis",open=True):
                 with gr.Row():
-                    clip=gr.Checkbox(label="CLIP Interrogator")
-                    pose=gr.Checkbox(label="Pose maps")
+                    clip=gr.Checkbox(label="CLIP Interrogator (upstream)")
+                    pose=gr.Checkbox(label="ControlNet/OpenPose maps (upstream)")
                     use_vlm=gr.Checkbox(value=True,label="Local VLM aesthetic analysis")
                 vlm_url=gr.Textbox(value="http://127.0.0.1:8000/v1",label="VLM OpenAI-compatible URL")
                 vlm_model=gr.Dropdown(choices=[load_registry()["analyzers"][x]["model_id"] for x in analyzers],
@@ -56,6 +63,7 @@ def app():
             with gr.Accordion("Image generation",open=True):
                 generate=gr.Checkbox(label="Generate images")
                 image_model=gr.Dropdown(choices=images,value="sdxl",allow_custom_value=True,label="Image model preset")
+                gr.Markdown("IP-Adapter and ControlNet are provided through upstream Diffusers/controlnet-aux adapters; model-specific transfer controls are being kept separate from generator model selection.")
                 with gr.Row():
                     krea_key=gr.Textbox(type="password",label="Krea API key (optional)")
                     ideogram_key=gr.Textbox(type="password",label="Ideogram API key (optional)")
@@ -76,6 +84,11 @@ def app():
             save=gr.Button("Save model configuration")
             saved=gr.Textbox(label="Status")
             save.click(save_models,[editor],[saved])
+        with gr.Tab("Upstream components"):
+            gr.Markdown("These are the external projects/libraries used directly by the orchestration layer.")
+            table=gr.Dataframe(headers=["Component","Installed","Version"],value=_upstream_table(),interactive=False)
+            refresh=gr.Button("Refresh")
+            refresh.click(_upstream_table,outputs=[table])
     return demo
 
 def launch(host="127.0.0.1",port=7860,share=False):
