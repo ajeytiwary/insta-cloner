@@ -27,7 +27,8 @@ def ui(
 def models_cmd() -> None:
     """Show bundled image-generator and analyzer presets."""
     console.print("[bold]Image models[/bold]")
-    registry = load_registry()\n    for name, spec in registry["image_models"].items():
+    registry = load_registry()
+    for name, spec in registry["image_models"].items():
         console.print(f"{name}: {spec['kind']} | {spec.get('model_id', spec.get('endpoint'))}")
     console.print("[bold]Aesthetic analyzers[/bold]")
     for name, spec in registry["analyzers"].items():
