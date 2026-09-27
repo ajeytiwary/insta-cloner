@@ -1,31 +1,28 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
+requires=["setuptools>=68","wheel"]
+build-backend="setuptools.build_meta"
 
 [project]
-name = "insta-cloner"
-version = "0.2.0"
-description = "Analyze an Instagram visual language and generate original inspired concepts/content locally."
-readme = "README.md"
-requires-python = ">=3.10,<3.14"
-dependencies = [
-  "instaloader>=4.14", "Pillow>=10.0", "numpy>=1.26", "pydantic>=2.8",
-  "typer>=0.12", "rich>=13.7", "opencv-python-headless>=4.10",
-]
+name="insta-cloner"
+version="0.3.0"
+description="Analyze Instagram visual language with a local VLM and generate original inspired content with selectable image models."
+readme="README.md"
+requires-python=">=3.10,<3.14"
+dependencies=["instaloader>=4.14","Pillow>=10.0","numpy>=1.26","pydantic>=2.8","typer>=0.12","rich>=13.7","opencv-python-headless>=4.10","requests>=2.32"]
 
 [project.optional-dependencies]
-llm = ["openai>=1.40"]
-clip = ["clip-interrogator>=0.6.0", "torch>=2.2", "torchvision>=0.17"]
-pose = ["controlnet-aux>=0.0.9", "torch>=2.2", "torchvision>=0.17"]
-generate = ["diffusers>=0.35", "transformers>=4.45", "accelerate>=1.0", "safetensors>=0.4", "torch>=2.2", "torchvision>=0.17"]
-full = ["openai>=1.40", "clip-interrogator>=0.6.0", "controlnet-aux>=0.0.9", "diffusers>=0.35", "transformers>=4.45", "accelerate>=1.0", "safetensors>=0.4", "torch>=2.2", "torchvision>=0.17"]
-dev = ["pytest>=8.0"]
+llm=["openai>=1.40"]
+clip=["clip-interrogator>=0.6.0","torch>=2.2","torchvision>=0.17"]
+pose=["controlnet-aux>=0.0.9","torch>=2.2","torchvision>=0.17"]
+generate=["diffusers>=0.40","transformers>=4.57","accelerate>=1.0","safetensors>=0.4","torch>=2.2","torchvision>=0.17","bitsandbytes>=0.45"]
+full=["openai>=1.40","clip-interrogator>=0.6.0","controlnet-aux>=0.0.9","diffusers>=0.40","transformers>=4.57","accelerate>=1.0","safetensors>=0.4","torch>=2.2","torchvision>=0.17","bitsandbytes>=0.45"]
+dev=["pytest>=8.0"]
 
 [project.scripts]
-insta-cloner = "insta_cloner.cli:app"
+insta-cloner="insta_cloner.cli:app"
 
 [tool.setuptools.packages.find]
-include = ["insta_cloner*"]
+include=["insta_cloner*"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths=["tests"]
