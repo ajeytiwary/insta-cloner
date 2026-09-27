@@ -7,8 +7,23 @@ MODELS = {
     },
     "qwen-image-2.1": {
         "kind": "comfyui", "model_id": "Comfy-Org/Qwen-Image-2.1",
-        "local": True, "recommended_12gb": False,
-        "note": "Use the INT8 ComfyUI workflow on constrained GPUs; full BF16 is too large for 12 GB VRAM.",
+        "local": True, "recommended_12gb": True,
+        "comfy_url": "http://127.0.0.1:8188",
+        "workflow_path": "workflows/qwen_image_2_1_t2i_api.json",
+        "steps": 25,
+        "mapping": {
+            "prompt": {"node": "PROMPT_NODE", "input": "text"},
+            "width": {"node": "LATENT_NODE", "input": "width"},
+            "height": {"node": "LATENT_NODE", "input": "height"},
+            "seed": {"node": "SAMPLER_NODE", "input": "seed"},
+            "steps": {"node": "SAMPLER_NODE", "input": "steps"},
+        },
+        "files": {
+            "diffusion_model": "qwen_image_2.1_int8_convrot.safetensors",
+            "text_encoder": "qwen3vl_8b_int8_convrot.safetensors",
+            "vae": "qwen_image_2.1_vae_bf16.safetensors",
+        },
+        "note": "INT8 ComfyUI preset for constrained GPUs. Export the official workflow in API format and update node mappings.",
     },
     "krea2-turbo": {
         "kind": "diffusers", "model_id": "krea/Krea-2-Turbo",
