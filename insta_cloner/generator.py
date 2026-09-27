@@ -81,7 +81,24 @@ def generate_images(concepts:list[dict[str,Any]],output_dir:Path,media_dir:Path,
         made=[]
         for i,c in enumerate(concepts): p=output_dir/f"{i+1:03d}.png"; _dry_image(p,c,width,height); made.append(p)
         return made
-    if spec["kind"]=="comfyui": raise RuntimeError("This model preset requires its ComfyUI backend; SDXL IP-Adapter/ControlNet conditioning cannot be attached to it.")
+    if spec["kind"]=="comfyui":
+        if ip_adapter or controlnet:
+            raise RuntimeError("SDXL IP-Adapter/ControlNet controls cannot be attached to this ComfyUI workflow.")
+        from .comfyui import generate_comfy
+        workflow_path=Path(spec.get("workflow_path",""))
+        if not workflow_path.exists():
+            raise RuntimeError(
+                f"ComfyUI API workflow not found: {workflow_path}. "
+                "Export the upstream workflow with ComfyUI 'Save (API Format)' and set workflow_path/mapping in Model configuration."
+            )
+        return generate_comfy(
+            [c.get("prompt","") for c in concepts],
+            output_dir,
+            workflow_path,
+            spec.get("mapping",{}),
+            spec.get("comfy_url","http://127.0.0.1:8188"),
+            width,height,seed,int(spec.get("steps",25)),
+        )
     if spec["kind"] in {"krea_api","ideogram_api"}:
         if ip_adapter or controlnet: raise RuntimeError("IP-Adapter/ControlNet controls currently require a compatible local Diffusers SDXL backend.")
         made=[]
