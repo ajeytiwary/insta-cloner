@@ -12,7 +12,7 @@ MODELS = {
         "native": True,
         "comfy_url": "http://127.0.0.1:8188",
         "workflow_path": "workflows/qwen_image_2_1_t2i_api.json",
-        "steps": 25,
+        "steps": 40,
         "mapping": {
             "prompt": {"node": "PROMPT_NODE", "input": "text"},
             "width": {"node": "LATENT_NODE", "input": "width"},
