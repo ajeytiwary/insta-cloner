@@ -60,10 +60,11 @@ def _conditioned(concepts,spec,output_dir,media_dir,width,height,seed,ip_adapter
         im=pipe(**call).images[0]; p=output_dir/f"{i+1:03d}.png"; im.save(p); made.append(p)
     return made
 
-def _local(concepts,spec,output_dir,width,height,seed,steps=None,guidance_scale=None):
+def _local(concepts,spec,output_dir,width,height,seed,steps=None,guidance_scale=None,low_vram=True):
 
     import torch
     from diffusers import DiffusionPipeline
+    from .runtime import apply_memory_optimizations
     if not torch.cuda.is_available(): raise RuntimeError("CUDA GPU not detected.")
     pipeline_name=spec.get("pipeline")
     if pipeline_name=="qwen_image_2_1":
@@ -74,9 +75,7 @@ def _local(concepts,spec,output_dir,width,height,seed,steps=None,guidance_scale=
         pipe=Krea2Pipeline.from_pretrained(spec["model_id"],torch_dtype=torch.bfloat16)
     else:
         pipe=DiffusionPipeline.from_pretrained(spec["model_id"],torch_dtype=torch.bfloat16)
-    pipe.enable_model_cpu_offload()
-    if hasattr(pipe,"enable_vae_slicing"): pipe.enable_vae_slicing()
-    if hasattr(pipe,"enable_vae_tiling"): pipe.enable_vae_tiling()
+    pipe=apply_memory_optimizations(pipe,low_vram=low_vram)
     made=[]
     for i,c in enumerate(concepts):
         call={"prompt":c.get("prompt",""),"width":width,"height":height,"generator":torch.Generator(device="cpu").manual_seed(seed+i)}
@@ -89,7 +88,7 @@ def _local(concepts,spec,output_dir,width,height,seed,steps=None,guidance_scale=
 
 def generate_images(concepts:list[dict[str,Any]],output_dir:Path,media_dir:Path,model_name:str="sdxl",width:int=768,height:int=1024,seed:int=42,dry_run:bool=False,
                     ip_adapter:bool=False,ip_scale:float=.45,ip_repo:str="h94/IP-Adapter",ip_weight:str="ip-adapter_sdxl.bin",
-                    controlnet:bool=False,control_scale:float=.8,control_model:str="thibaud/controlnet-openpose-sdxl-1.0",pose_dir:Path|None=None,steps:int|None=None,guidance_scale:float|None=None,backend:str="auto",**_:Any)->list[Path]:
+                    controlnet:bool=False,control_scale:float=.8,control_model:str="thibaud/controlnet-openpose-sdxl-1.0",pose_dir:Path|None=None,steps:int|None=None,guidance_scale:float|None=None,backend:str="auto",low_vram:bool=True,**_:Any)->list[Path]:
     output_dir.mkdir(parents=True,exist_ok=True); spec=resolve_image_model(model_name)
     if dry_run:
         made=[]
@@ -120,4 +119,4 @@ def generate_images(concepts:list[dict[str,Any]],output_dir:Path,media_dir:Path,
         return made
     if ip_adapter or controlnet:
         return _conditioned(concepts,spec,output_dir,media_dir,width,height,seed,ip_adapter,ip_scale,ip_repo,ip_weight,controlnet,control_scale,control_model,pose_dir)
-    return _local(concepts,spec,output_dir,width,height,seed,steps,guidance_scale)
+    return _local(concepts,spec,output_dir,width,height,seed,steps,guidance_scale,low_vram)
