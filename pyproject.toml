@@ -4,34 +4,22 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "insta-cloner"
-version = "0.1.0"
-description = "Analyze an Instagram profile's visual language and turn it into an original-content style brief."
+version = "0.2.0"
+description = "Analyze an Instagram visual language and generate original inspired concepts/content locally."
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
 dependencies = [
-  "instaloader>=4.14",
-  "Pillow>=10.0",
-  "numpy>=1.26",
-  "pydantic>=2.8",
-  "typer>=0.12",
-  "rich>=13.7",
-  "opencv-python-headless>=4.10",
+  "instaloader>=4.14", "Pillow>=10.0", "numpy>=1.26", "pydantic>=2.8",
+  "typer>=0.12", "rich>=13.7", "opencv-python-headless>=4.10",
 ]
 
 [project.optional-dependencies]
-clip = [
-  "clip-interrogator>=0.6.0",
-  "torch>=2.2",
-  "torchvision>=0.17",
-]
-pose = [
-  "controlnet-aux>=0.0.9",
-  "torch>=2.2",
-  "torchvision>=0.17",
-]
-dev = [
-  "pytest>=8.0",
-]
+llm = ["openai>=1.40"]
+clip = ["clip-interrogator>=0.6.0", "torch>=2.2", "torchvision>=0.17"]
+pose = ["controlnet-aux>=0.0.9", "torch>=2.2", "torchvision>=0.17"]
+generate = ["diffusers>=0.35", "transformers>=4.45", "accelerate>=1.0", "safetensors>=0.4", "torch>=2.2", "torchvision>=0.17"]
+full = ["openai>=1.40", "clip-interrogator>=0.6.0", "controlnet-aux>=0.0.9", "diffusers>=0.35", "transformers>=4.45", "accelerate>=1.0", "safetensors>=0.4", "torch>=2.2", "torchvision>=0.17"]
+dev = ["pytest>=8.0"]
 
 [project.scripts]
 insta-cloner = "insta_cloner.cli:app"
