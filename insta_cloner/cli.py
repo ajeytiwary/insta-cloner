@@ -35,6 +35,41 @@ def models_cmd() -> None:
         console.print(f"{name}: {spec['model_id']}")
 
 
+@app.command("gpu-smoke")
+def gpu_smoke(
+    model: str = typer.Option("qwen-image-2.1", help="Image model preset"),
+    output: Path = typer.Option(Path("/data/smoke"), help="Smoke-test output directory"),
+    width: int = typer.Option(512, min=256),
+    height: int = typer.Option(512, min=256),
+    steps: int = typer.Option(4, min=1),
+) -> None:
+    """Load a native image model on CUDA and generate one small validation image."""
+    from .generator import generate_images
+    from .runtime import runtime_status
+    status = runtime_status()
+    console.print(status)
+    if not status["cuda"]:
+        raise typer.Exit(code=2)
+    media = output / "media"
+    media.mkdir(parents=True, exist_ok=True)
+    made = generate_images(
+        [{"title": "gpu-smoke", "prompt": "A small green leaf on a clean white background, studio photograph"}],
+        output / "generated",
+        media,
+        model_name=model,
+        width=width,
+        height=height,
+        seed=42,
+        steps=steps,
+        dry_run=False,
+        backend="native",
+        low_vram=True,
+    )
+    if not made or not made[0].exists() or made[0].stat().st_size == 0:
+        raise RuntimeError("GPU smoke test did not produce a valid image.")
+    console.print(f"[green]GPU smoke test passed[/green]: {made[0]}")
+
+
 @app.command()
 def clone(
     profile: str = typer.Argument(..., help="Instagram profile URL or username"),
