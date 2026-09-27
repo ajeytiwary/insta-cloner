@@ -6,9 +6,9 @@ MODELS = {
         "local": True, "recommended_12gb": True,
     },
     "qwen-image-2.1": {
-        "kind": "comfyui", "model_id": "Comfy-Org/Qwen-Image-2.1",
-        "local": True, "recommended_12gb": True,
-        "comfy_url": "http://127.0.0.1:8188",
+        "kind": "diffusers", "model_id": "Qwen/Qwen-Image-2.1",
+        "pipeline": "qwen_image_2_1",
+        "local": True, "recommended_12gb": False,\n        "native": True,\n        "comfy_url": "http://127.0.0.1:8188",
         "workflow_path": "workflows/qwen_image_2_1_t2i_api.json",
         "steps": 25,
         "mapping": {
@@ -27,7 +27,8 @@ MODELS = {
     },
     "krea2-turbo": {
         "kind": "diffusers", "model_id": "krea/Krea-2-Turbo",
-        "local": True, "recommended_12gb": False,
+        "pipeline": "krea2",
+        "local": True, "native": True, "recommended_12gb": False,
         "steps": 8, "guidance_scale": 0.0,
     },
     "krea2-api-medium": {
