@@ -69,7 +69,15 @@ def _local(concepts,spec,output_dir,width,height,seed,steps=None,guidance_scale=
     pipeline_name=spec.get("pipeline")
     if pipeline_name=="qwen_image_2_1":
         from diffusers import QwenImage21Pipeline
-        pipe=QwenImage21Pipeline.from_pretrained(spec["model_id"],torch_dtype=torch.bfloat16)
+        from diffusers.quantizers import PipelineQuantizationConfig
+        load_kwargs={"dtype":torch.bfloat16}
+        if low_vram:
+            load_kwargs["quantization_config"]=PipelineQuantizationConfig(
+                quant_backend="bitsandbytes_4bit",
+                quant_kwargs={"load_in_4bit":True,"bnb_4bit_quant_type":"nf4","bnb_4bit_compute_dtype":torch.bfloat16},
+                components_to_quantize=["transformer","text_encoder"],
+            )
+        pipe=QwenImage21Pipeline.from_pretrained(spec["model_id"],**load_kwargs)
     elif pipeline_name=="krea2":
         from diffusers import Krea2Pipeline
         pipe=Krea2Pipeline.from_pretrained(spec["model_id"],torch_dtype=torch.bfloat16)
@@ -82,7 +90,7 @@ def _local(concepts,spec,output_dir,width,height,seed,steps=None,guidance_scale=
         chosen_steps=steps if steps is not None else spec.get("steps")
         chosen_guidance=guidance_scale if guidance_scale is not None else spec.get("guidance_scale")
         if chosen_steps is not None: call["num_inference_steps"]=int(chosen_steps)
-        if chosen_guidance is not None: call["guidance_scale"]=float(chosen_guidance)
+        if chosen_guidance is not None and pipeline_name!="qwen_image_2_1": call["guidance_scale"]=float(chosen_guidance)
         im=pipe(**call).images[0]; p=output_dir/f"{i+1:03d}.png"; im.save(p); made.append(p)
     return made
 
