@@ -82,6 +82,7 @@ Resources:
           git clone --branch '${RepoRef}' '${RepoUrl}' /opt/insta-cloner
           cd /opt/insta-cloner
           docker build -t insta-cloner .
+          docker run --rm --gpus all -v /data:/data insta-cloner insta-cloner gpu-smoke --output /data/smoke
           docker run -d --restart unless-stopped --gpus all --name insta-cloner -e INSTA_CLONER_USER="${WebUser}" -e INSTA_CLONER_PASSWORD="${WebPassword}" -p ${WebPort}:7860 -v /data:/data insta-cloner
 Outputs:
   WebUI:
