@@ -8,7 +8,9 @@ MODELS = {
     "qwen-image-2.1": {
         "kind": "diffusers", "model_id": "Qwen/Qwen-Image-2.1",
         "pipeline": "qwen_image_2_1",
-        "local": True, "recommended_12gb": False,\n        "native": True,\n        "comfy_url": "http://127.0.0.1:8188",
+        "local": True, "recommended_12gb": False,
+        "native": True,
+        "comfy_url": "http://127.0.0.1:8188",
         "workflow_path": "workflows/qwen_image_2_1_t2i_api.json",
         "steps": 25,
         "mapping": {
