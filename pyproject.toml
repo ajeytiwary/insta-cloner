@@ -22,23 +22,23 @@ dependencies=[
 
 [project.optional-dependencies]
 llm=["openai>=1.40"]
-clip=["clip-interrogator>=0.6.0","torch>=2.2","torchvision>=0.17"]
-pose=["controlnet-aux>=0.0.9","torch>=2.2","torchvision>=0.17"]
+clip=["clip-interrogator>=0.6.0","torch>=2.4","torchvision>=0.17"]
+pose=["controlnet-aux>=0.0.9","torch>=2.4","torchvision>=0.17"]
 transfer=[
   "diffusers>=0.40",
-  "transformers>=4.57",
+  "transformers>=5.17",
   "accelerate>=1.0",
   "safetensors>=0.4",
-  "torch>=2.2",
+  "torch>=2.4",
   "torchvision>=0.17",
   "controlnet-aux>=0.0.9"
 ]
 generate=[
   "diffusers>=0.40",
-  "transformers>=4.57",
+  "transformers>=5.17",
   "accelerate>=1.0",
   "safetensors>=0.4",
-  "torch>=2.2",
+  "torch>=2.4",
   "torchvision>=0.17",
   "bitsandbytes>=0.45"
 ]
@@ -47,10 +47,10 @@ full=[
   "clip-interrogator>=0.6.0",
   "controlnet-aux>=0.0.9",
   "diffusers>=0.40",
-  "transformers>=4.57",
+  "transformers>=5.17",
   "accelerate>=1.0",
   "safetensors>=0.4",
-  "torch>=2.2",
+  "torch>=2.4",
   "torchvision>=0.17",
   "bitsandbytes>=0.45"
 ]
