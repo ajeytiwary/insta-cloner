@@ -23,6 +23,43 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
+      - name: Reject accidental literal escapes
+        run: |
+          python - <<'PY'
+          import io
+          import tokenize
+          from pathlib import Path
+          bad = []
+          for path in sorted(Path("insta_cloner").glob("*.py")):
+              source = path.read_text(encoding="utf-8")
+              protected = [False] * len(source)
+              offsets = [0]
+              for line in source.splitlines(keepends=True):
+                  offsets.append(offsets[-1] + len(line))
+              try:
+                  tokens = tokenize.generate_tokens(io.StringIO(source).readline)
+                  for tok in tokens:
+                      if tok.type in {tokenize.STRING, tokenize.COMMENT}:
+                          start = offsets[tok.start[0]-1] + tok.start[1]
+                          end = offsets[tok.end[0]-1] + tok.end[1]
+                          for i in range(start, min(end, len(protected))):
+                              protected[i] = True
+              except tokenize.TokenError:
+                  pass
+              for needle in ("\\\\n", "\\\\r", "\\\\t"):
+                  pos = 0
+                  while True:
+                      pos = source.find(needle, pos)
+                      if pos < 0:
+                          break
+                      if not protected[pos]:
+                          bad.append(f"{path}: literal {needle!r} at offset {pos}")
+                      pos += len(needle)
+          if bad:
+              print("\\n".join(bad))
+              raise SystemExit(1)
+          PY
+
       - name: Syntax check
         run: |
           python - <<'PY'
