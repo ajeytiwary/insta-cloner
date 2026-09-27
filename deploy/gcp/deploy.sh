@@ -21,6 +21,8 @@ set -euxo pipefail
 apt-get update
 apt-get install -y docker.io git curl
 systemctl enable --now docker
+nvidia-smi
+docker run --rm --gpus all nvidia/cuda:12.8.1-base-ubuntu22.04 nvidia-smi
 mkdir -p /opt/insta-cloner /data
 git clone --branch "$REPO_REF" "$REPO_URL" /opt/insta-cloner
 cd /opt/insta-cloner
