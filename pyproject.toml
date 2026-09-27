@@ -4,11 +4,11 @@ build-backend="setuptools.build_meta"
 
 [project]
 name="insta-cloner"
-version="0.3.0"
+version="0.4.0"
 description="Analyze Instagram visual language with a local VLM and generate original inspired content with selectable image models."
 readme="README.md"
 requires-python=">=3.10,<3.14"
-dependencies=["instaloader>=4.14","Pillow>=10.0","numpy>=1.26","pydantic>=2.8","typer>=0.12","rich>=13.7","opencv-python-headless>=4.10","requests>=2.32"]
+dependencies=["gradio>=5.0","instaloader>=4.14","Pillow>=10.0","numpy>=1.26","pydantic>=2.8","typer>=0.12","rich>=13.7","opencv-python-headless>=4.10","requests>=2.32"]
 
 [project.optional-dependencies]
 llm=["openai>=1.40"]
