@@ -51,3 +51,13 @@ def test_custom_registry(tmp_path: Path):
 def test_ui_import():
     from insta_cloner.ui import app
     assert callable(app)
+
+
+def test_upstream_status_shape():
+    from insta_cloner.upstream import upstream_status
+    rows=upstream_status()
+    names={x.name for x in rows}
+    assert "Instaloader" in names
+    assert "CLIP Interrogator" in names
+    assert "ControlNet Aux" in names
+    assert "Diffusers / IP-Adapter" in names
