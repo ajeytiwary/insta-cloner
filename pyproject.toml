@@ -54,7 +54,7 @@ full=[
   "torchvision>=0.17",
   "bitsandbytes>=0.45"
 ]
-dev=["pytest>=8.0"]
+dev=["pytest>=8.0","PyYAML>=6.0"]
 
 [project.scripts]
 insta-cloner="insta_cloner.cli:app"
