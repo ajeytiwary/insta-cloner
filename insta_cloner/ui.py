@@ -321,4 +321,12 @@ def app():
 
 
 def launch(host="127.0.0.1", port=7860, share=False):
-    app().launch(server_name=host, server_port=port, share=share)
+    user = os.environ.get("INSTA_CLONER_USER")
+    password = os.environ.get("INSTA_CLONER_PASSWORD")
+    auth = (user, password) if user and password else None
+    app().queue().launch(
+        server_name=host,
+        server_port=port,
+        share=share,
+        auth=auth,
+    )
