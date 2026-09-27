@@ -1,0 +1,33 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    gpus: all
+    environment:
+      HF_HOME: /data/huggingface
+      INSTA_CLONER_USER: ${INSTA_CLONER_USER:-admin}
+      INSTA_CLONER_PASSWORD: ${INSTA_CLONER_PASSWORD:?Set INSTA_CLONER_PASSWORD}
+    volumes:
+      - model-cache:/data
+    expose:
+      - "7860"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      DOMAIN: ${DOMAIN:-}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  model-cache:
+  caddy-data:
+  caddy-config:
