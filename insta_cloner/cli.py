@@ -5,7 +5,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from .models import ANALYZERS, MODELS
+from .config import load_registry
 from .pipeline import run_pipeline
 
 app = typer.Typer(no_args_is_help=True)
@@ -27,10 +27,10 @@ def ui(
 def models_cmd() -> None:
     """Show bundled image-generator and analyzer presets."""
     console.print("[bold]Image models[/bold]")
-    for name, spec in MODELS.items():
+    registry = load_registry()\n    for name, spec in registry["image_models"].items():
         console.print(f"{name}: {spec['kind']} | {spec.get('model_id', spec.get('endpoint'))}")
     console.print("[bold]Aesthetic analyzers[/bold]")
-    for name, spec in ANALYZERS.items():
+    for name, spec in registry["analyzers"].items():
         console.print(f"{name}: {spec['model_id']}")
 
 
